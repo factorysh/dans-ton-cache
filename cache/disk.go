@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -13,20 +14,16 @@ type DiskCache struct {
 	cache *lru.Cache
 }
 
-func (d *DiskCache) Get(key string, writer io.Writer) (bool, error) {
+func (d *DiskCache) Get(key string) (io.ReadCloser, error) {
 	_, ok := d.cache.Get(key)
 	if !ok {
-		return false, nil
+		return nil, nil
 	}
 	f, err := os.Open(path.Join(d.path, key))
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	_, err = io.Copy(writer, f)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return f, nil
 }
 
 func (d *DiskCache) Add(key string, reader io.Reader) error {
@@ -46,9 +43,9 @@ func (d *DiskCache) Add(key string, reader io.Reader) error {
 }
 
 func (d *DiskCache) evict(key interface{}, value interface{}) {
-	k, ok := key.([]byte)
+	k, ok := key.(string)
 	if !ok {
-		panic("Wrong type")
+		panic(fmt.Sprintf("evict: Wrong key type : %v", key))
 	}
 	err := os.Remove(path.Join(d.path, string(k)))
 	if err != nil {
