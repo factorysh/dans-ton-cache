@@ -1,11 +1,14 @@
 package cache
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -71,6 +74,7 @@ func (d *DiskCache) Add(key string, header http.Header) (io.WriteCloser, error) 
 	if err != nil {
 		return nil, err
 	}
+	f.WriteString("\r\n") // the parser need a clean end
 	err = f.Close()
 	if err != nil {
 		return nil, err
@@ -108,5 +112,45 @@ func newDiskCache(path string, size int) (*DiskCache, error) {
 		return nil, err
 	}
 	d.cache = l
+	return d, nil
+}
+
+func DiskCacheFromPath(path string, size int) (*DiskCache, error) {
+	d, err := newDiskCache(path, size)
+	if err != nil {
+		return nil, err
+	}
+
+	err = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if filepath.Ext(path) != ".header" {
+			return nil
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		base := filepath.Base(path)
+		fmt.Println("base", base, base[:len(base)-7])
+
+		var header http.Header
+		if info.Size() == 0 {
+			header = make(http.Header)
+		} else {
+			tp := textproto.NewReader(bufio.NewReader(f))
+			mimeHeader, err := tp.ReadMIMEHeader()
+			if err != nil {
+				return err
+			}
+			header = http.Header(mimeHeader)
+		}
+		k := base[:len(base)-7]
+		d.cache.Add(k, header)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	return d, nil
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -29,6 +31,31 @@ func TestDisk(t *testing.T) {
 	assert.NotNil(t, rc)
 	assert.Nil(t, header)
 	defer rc.Close()
+	r, err := ioutil.ReadAll(rc)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("aussi"), r)
+}
+
+func TestFromPath(t *testing.T) {
+	path, err := ioutil.TempDir("/tmp", "*")
+	defer os.Remove(path)
+	assert.NoError(t, err)
+	d, err := newDiskCache(path, 3)
+	assert.NoError(t, err)
+	header := make(http.Header)
+	header.Add("Name", "Bob")
+	wc, err := d.Add("beuha", header)
+	assert.NoError(t, err)
+	io.WriteString(wc, "aussi")
+	wc.Close()
+	fmt.Println(path)
+
+	d2, err := DiskCacheFromPath(path, 3)
+	assert.NoError(t, err)
+	h2, rc, err := d2.Get("beuha")
+	assert.NoError(t, err)
+	defer rc.Close()
+	assert.Equal(t, "Bob", h2.Get("name"))
 	r, err := ioutil.ReadAll(rc)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("aussi"), r)
