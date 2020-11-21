@@ -26,20 +26,10 @@ func (d *DiskCache) Get(key string) (io.ReadCloser, error) {
 	return f, nil
 }
 
-func (d *DiskCache) Add(key string, reader io.Reader) error {
-	evicted := d.cache.Add(key, key)
-	if !evicted {
-		f, err := os.OpenFile(path.Join(d.path, key), os.O_CREATE|os.O_WRONLY, 0640)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		_, err = io.Copy(f, reader)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func (d *DiskCache) Add(key string) (io.WriteCloser, error) {
+	d.cache.Add(key, key) // we don't care about eviction, yolo
+	// TODO write a temp file, when closed, mv to the file
+	return os.OpenFile(path.Join(d.path, key), os.O_CREATE|os.O_WRONLY, 0640)
 }
 
 func (d *DiskCache) evict(key interface{}, value interface{}) {
