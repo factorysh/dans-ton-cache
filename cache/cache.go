@@ -13,7 +13,7 @@ type Cache struct {
 }
 
 func New(path string, size int) (*Cache, error) {
-	d, err := newDiskCache(path, size)
+	d, err := DiskCacheFromPath(path, size)
 	if err != nil {
 		return nil, err
 	}
