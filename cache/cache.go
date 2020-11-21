@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/factorysh/dans-ton-cache/disk"
 )
 
 type Cache struct {
-	store *DiskCache
+	store *disk.DiskCache
 }
 
 func New(path string, size int) (*Cache, error) {
-	d, err := DiskCacheFromPath(path, size)
+	d, err := disk.DiskCacheFromPath(path, size)
 	if err != nil {
 		return nil, err
 	}
