@@ -14,9 +14,6 @@ type CacheHTTPWriter struct {
 }
 
 func (c *CacheHTTPWriter) Header() http.Header {
-	if c.header == nil {
-		c.header = make(http.Header)
-	}
 	return c.header
 }
 

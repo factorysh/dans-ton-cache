@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"sync"
@@ -17,26 +18,27 @@ type DiskCache struct {
 	todos map[string]*sync.WaitGroup
 }
 
-func (d *DiskCache) Get(key string) (io.ReadCloser, error) {
-	_, ok := d.cache.Get(key)
+// Get key, returns header, body io.ReadCloser, error
+func (d *DiskCache) Get(key string) (http.Header, io.ReadCloser, error) {
+	header, ok := d.cache.Get(key)
 	if !ok {
 		d.lock.Lock()
 		todo, ok := d.todos[key]
 		d.lock.Unlock()
 		if !ok {
-			return nil, nil
+			return nil, nil, nil
 		}
 		todo.Wait()
 		_, ok = d.cache.Get(key)
 		if !ok {
-			return nil, fmt.Errorf("I wait for %v but it doesn't work", key)
+			return nil, nil, fmt.Errorf("I wait for %v but it doesn't work", key)
 		}
 	}
 	f, err := os.Open(path.Join(d.path, key))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return f, nil
+	return header.(http.Header), f, nil
 }
 
 type addCloser struct {
@@ -53,15 +55,28 @@ func (a *addCloser) Close() error {
 	return a.insider.Close()
 }
 
-func (d *DiskCache) Add(key string) (io.WriteCloser, error) {
+// Add key,header, returns io.WriteCloser and error
+func (d *DiskCache) Add(key string, header http.Header) (io.WriteCloser, error) {
 	todo := &sync.WaitGroup{}
 	todo.Add(1)
 	d.lock.Lock()
 	d.todos[key] = todo
 	d.lock.Unlock()
-	d.cache.Add(key, key) // we don't care about eviction, yolo
+	d.cache.Add(key, header) // we don't care about eviction, yolo
+	f, err := os.OpenFile(path.Join(d.path, fmt.Sprintf("%s.header", key)), os.O_CREATE|os.O_WRONLY, 0640)
+	if err != nil {
+		return nil, err
+	}
+	err = header.Write(f)
+	if err != nil {
+		return nil, err
+	}
+	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
 	// TODO write a temp file, when closed, mv to the file
-	f, err := os.OpenFile(path.Join(d.path, key), os.O_CREATE|os.O_WRONLY, 0640)
+	f, err = os.OpenFile(path.Join(d.path, key), os.O_CREATE|os.O_WRONLY, 0640)
 	if err != nil {
 		return nil, err
 	}

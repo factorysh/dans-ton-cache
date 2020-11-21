@@ -16,6 +16,7 @@ type SlowHandler struct {
 }
 
 func (s *SlowHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-beuha", "aussi")
 	w.WriteHeader(http.StatusOK)
 	_, err := io.WriteString(w, "Hello world")
 	if err != nil {
@@ -37,6 +38,7 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, 1, s.n)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, []byte("Hello world"), body)
+	assert.Equal(t, "aussi", resp.Header.Get("x-beuha"))
 
 	// Cached
 	w = httptest.NewRecorder()
@@ -46,4 +48,5 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, 1, s.n)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, []byte("Hello world"), body)
+	assert.Equal(t, "aussi", resp.Header.Get("x-beuha"))
 }

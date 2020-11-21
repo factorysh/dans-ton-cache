@@ -31,7 +31,7 @@ func (c *Cache) key(r *http.Request) string {
 func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := c.key(r)
-		rc, err := c.store.Get(key)
+		header, rc, err := c.store.Get(key)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(500)
@@ -39,6 +39,11 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 		}
 		if rc != nil {
 			defer rc.Close()
+			for k, values := range header {
+				for _, value := range values {
+					w.Header().Add(k, value)
+				}
+			}
 			_, err = io.Copy(w, rc)
 			if err != nil {
 				fmt.Println(err)
@@ -46,13 +51,15 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 			}
 			return
 		}
-		wc, err := c.store.Add(key)
+		header = w.Header()
+		wc, err := c.store.Add(key, header)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(500)
 		}
 		defer wc.Close()
 		in(&CacheHTTPWriter{
+			header: header,
 			writer: io.MultiWriter(w, wc),
 		}, r)
 	}

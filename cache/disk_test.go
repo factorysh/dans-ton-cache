@@ -14,18 +14,20 @@ import (
 func TestDisk(t *testing.T) {
 	d, err := newDiskCache("/tmp", 3)
 	assert.NoError(t, err)
-	rc, err := d.Get("beuha")
+	header, rc, err := d.Get("beuha")
 	assert.NoError(t, err)
 	assert.Nil(t, rc)
+	assert.Nil(t, header)
 
-	wc, err := d.Add("beuha")
+	wc, err := d.Add("beuha", nil)
 	assert.NoError(t, err)
 	io.WriteString(wc, "aussi")
 	wc.Close()
 
-	rc, err = d.Get("beuha")
+	header, rc, err = d.Get("beuha")
 	assert.NoError(t, err)
 	assert.NotNil(t, rc)
+	assert.Nil(t, header)
 	defer rc.Close()
 	r, err := ioutil.ReadAll(rc)
 	assert.NoError(t, err)
@@ -49,7 +51,7 @@ func TestEviction(t *testing.T) {
 
 	for _, k := range keys {
 		fmt.Println(k)
-		wc, err := d.Add(k)
+		wc, err := d.Add(k, nil)
 		assert.NoError(t, err)
 		defer wc.Close()
 		io.WriteString(wc, datas[k])
@@ -66,15 +68,16 @@ func TestEviction(t *testing.T) {
 func TestConcurrentAcces(t *testing.T) {
 	d, err := newDiskCache("/tmp", 3)
 	assert.NoError(t, err)
-	wc, err := d.Add("plop")
+	wc, err := d.Add("plop", nil)
 	assert.NoError(t, err)
 	w := &sync.WaitGroup{}
 	w.Add(3)
 	for i := 0; i < 3; i++ {
 		go func() {
-			rc, err := d.Get("plop")
+			header, rc, err := d.Get("plop")
 			assert.NoError(t, err)
 			defer rc.Close()
+			assert.Nil(t, header)
 			v, err := ioutil.ReadAll(rc)
 			assert.NoError(t, err)
 			assert.Equal(t, []byte("aussi"), v)
