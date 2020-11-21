@@ -1,12 +1,11 @@
 package cache
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
-
-	"crypto/sha256"
 )
 
 type Cache struct {
@@ -18,7 +17,9 @@ func New(path string, size int) (*Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Cache{d}, nil
+	return &Cache{
+		store: d,
+	}, nil
 }
 
 func (c *Cache) key(r *http.Request) string {
@@ -34,6 +35,7 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(500)
+			return
 		}
 		if rc != nil {
 			defer rc.Close()
@@ -44,7 +46,6 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 			}
 			return
 		}
-		// TODO lock key, other call with same url waits
 		wc, err := c.store.Add(key)
 		if err != nil {
 			fmt.Println(err)
