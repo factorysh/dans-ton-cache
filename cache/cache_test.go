@@ -37,4 +37,13 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, 1, s.n)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, []byte("Hello world"), body)
+
+	// Cached
+	w = httptest.NewRecorder()
+	h(w, r)
+	resp = w.Result()
+	body, _ = ioutil.ReadAll(resp.Body)
+	assert.Equal(t, 1, s.n)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, []byte("Hello world"), body)
 }
