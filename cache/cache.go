@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,9 +23,8 @@ func New(path string, size int) (*Cache, error) {
 
 func (c *Cache) key(r *http.Request) string {
 	h := sha256.New()
-	h.Write([]byte(r.URL.Path))
-
-	return string(h.Sum(nil))
+	io.WriteString(h, r.URL.Path)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
@@ -45,11 +45,14 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		// TODO lock key, other call with same url waits
-		rr, ww := io.Pipe()
-		cw := &CacheHTTPWriter{
-			writer: ww,
+		wc, err := c.store.Add(key)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(500)
 		}
-		c.store.Add(key, rr)
-		in(cw, r)
+		defer wc.Close()
+		in(&CacheHTTPWriter{
+			writer: io.MultiWriter(w, wc),
+		}, r)
 	}
 }
