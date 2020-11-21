@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,11 @@ func TestDisk(t *testing.T) {
 	r, err := ioutil.ReadAll(rc)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("aussi"), r)
+}
 
+func TestEviction(t *testing.T) {
+	d, err := newDiskCache("/tmp", 3)
+	assert.NoError(t, err)
 	datas := map[string]string{
 		"a": "anachronic",
 		"b": "beer",
@@ -56,4 +61,28 @@ func TestDisk(t *testing.T) {
 	for _, k := range []string{"b", "c", "d"} {
 		assert.Contains(t, myKeys, k)
 	}
+}
+
+func TestConcurrentAcces(t *testing.T) {
+	d, err := newDiskCache("/tmp", 3)
+	assert.NoError(t, err)
+	wc, err := d.Add("plop")
+	assert.NoError(t, err)
+	w := &sync.WaitGroup{}
+	w.Add(3)
+	for i := 0; i < 3; i++ {
+		go func() {
+			rc, err := d.Get("plop")
+			assert.NoError(t, err)
+			defer rc.Close()
+			v, err := ioutil.ReadAll(rc)
+			assert.NoError(t, err)
+			assert.Equal(t, []byte("aussi"), v)
+			w.Done()
+		}()
+	}
+	_, err = io.WriteString(wc, "aussi")
+	assert.NoError(t, err)
+	wc.Close()
+	w.Wait()
 }
