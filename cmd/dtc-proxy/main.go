@@ -18,7 +18,8 @@ func main() {
 	}
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
 	mux := http.NewServeMux()
-	c, err := cache.New("/tmp", 10)
+	os.MkdirAll("/tmp/proxy", 0770)
+	c, err := cache.New("/tmp/proxy", 10)
 	if err != nil {
 		log.Fatal(err)
 	}
