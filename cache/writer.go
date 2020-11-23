@@ -55,5 +55,8 @@ func (c *CacheHTTPWriter) WriteHeader(statusCode int) {
 }
 
 func (c *CacheHTTPWriter) Close() error {
+	if c.closer == nil {
+		return nil
+	}
 	return c.closer.Close()
 }
