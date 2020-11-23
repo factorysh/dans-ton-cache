@@ -39,6 +39,7 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, []byte("Hello world"), body)
 	assert.Equal(t, "aussi", resp.Header.Get("x-beuha"))
+	assert.Equal(t, "miss", resp.Header.Get("x-cache"))
 
 	// Cached
 	w = httptest.NewRecorder()
@@ -49,4 +50,5 @@ func TestMiddleware(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, []byte("Hello world"), body)
 	assert.Equal(t, "aussi", resp.Header.Get("x-beuha"))
+	assert.Equal(t, "hit", resp.Header.Get("x-cache"))
 }

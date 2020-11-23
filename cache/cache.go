@@ -46,6 +46,7 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 					w.Header().Add(k, value)
 				}
 			}
+			w.Header().Set("X-Cache", "hit")
 			_, err = io.Copy(w, rc)
 			if err != nil {
 				fmt.Println(err)
@@ -53,16 +54,19 @@ func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 			}
 			return
 		}
-		header = w.Header()
-		wc, err := c.store.Add(key, header)
-		if err != nil {
-			fmt.Println(err)
-			w.WriteHeader(500)
-		}
-		defer wc.Close()
-		in(&CacheHTTPWriter{
-			header: header,
-			writer: io.MultiWriter(w, wc),
-		}, r)
+		w.Header().Set("X-Cache", "miss")
+		cw := NewCacheHTTPWriter(w, func(status int, header http.Header) (io.WriteCloser, error) {
+			if status == http.StatusOK {
+				wc, err := c.store.Add(key, header)
+				if err != nil {
+					return nil, err
+				}
+				return wc, nil
+			}
+			return nil, fmt.Errorf("Backend error %d", status)
+		})
+		defer cw.Close()
+
+		in(cw, r)
 	}
 }
