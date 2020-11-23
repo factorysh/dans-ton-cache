@@ -41,6 +41,10 @@ func (c *Cache) key(r *http.Request) string {
 
 func (c *Cache) Middleware(in http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			in(w, r)
+			return
+		}
 		key := c.key(r)
 		header, rc, err := c.store.Get(key)
 		if err != nil {
