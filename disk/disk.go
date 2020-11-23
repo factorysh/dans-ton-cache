@@ -90,6 +90,10 @@ func (d *DiskCache) Add(key string, header http.Header) (io.WriteCloser, error) 
 	}, nil
 }
 
+func (d *DiskCache) Remove(key string) {
+	d.cache.Remove(key)
+}
+
 func (d *DiskCache) evict(key interface{}, value interface{}) {
 	k, ok := key.(string)
 	if !ok {
