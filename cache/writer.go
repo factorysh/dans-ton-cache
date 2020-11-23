@@ -47,7 +47,6 @@ func (c *CacheHTTPWriter) WriteHeader(statusCode int) {
 	for key, values := range c.header {
 		for _, value := range values {
 			c.httpWriter.Header().Add(key, value)
-
 		}
 	}
 	c.httpWriter.WriteHeader(statusCode)
