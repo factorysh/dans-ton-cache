@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/factorysh/dans-ton-cache/disk"
 )
@@ -27,6 +28,14 @@ func New(path string, size int) (*Cache, error) {
 func (c *Cache) key(r *http.Request) string {
 	h := sha256.New()
 	io.WriteString(h, r.URL.Path)
+	h.Write([]byte(":"))
+	for _, accept := range strings.Split(r.Header.Get("accept"), ",") {
+		accept = strings.Trim(accept, " ")
+		switch accept {
+		case "image/webp":
+			io.WriteString(h, accept)
+		}
+	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 
